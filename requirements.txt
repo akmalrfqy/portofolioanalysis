@@ -3,6 +3,7 @@ yfinance
 pandas
 numpy
 scipy
+openpyxl
 matplotlib
 tensorflow
 scikit-learn
