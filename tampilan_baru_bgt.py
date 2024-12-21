@@ -280,7 +280,7 @@ def run_model(data, selected_data, best_model_params):
 
     return test_mape_denormalized, best_model, scaler, scaled_data
 
-def forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_periods=30):
+def forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_periods=60):
     """
     Melakukan forecasting berdasarkan model yang sudah dilatih.
 
@@ -612,8 +612,8 @@ elif menu == "📊 Analyze":
                 st.write(f"Test MAPE (Denormalized): {test_mape*100:.2f}%")
 
                 # Forecast periode ke depan
-                forecast_periods = 30  # Atur jumlah periode yang akan diprediksi
-                st.write(f"Forecasting untuk {forecast_periods} periode ke depan...")
+                forecast_periods = 60  # Atur jumlah periode yang akan diprediksi
+                st.write(f"Forecasting untuk {forecast_periods} hari ke depan...")
 
                 # Forecasting
                 time_step = 6  # Window size yang digunakan
