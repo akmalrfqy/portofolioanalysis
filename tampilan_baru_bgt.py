@@ -419,7 +419,7 @@ elif menu == "📊 Analyze":
             # Mengunduh data harga saham
             prices, error = None, None
             try:
-                prices = yf.download(selected_tickers, start=start_date, end=end_date, interval="1mo")['Adj Close']
+                prices = yf.download(selected_tickers, start=start_date, end=end_date, interval="1mo")['Close']
                 prices = prices.dropna(how="all")  # Hapus baris dengan semua nilai NaN
             except Exception as e:
                 error = str(e)
