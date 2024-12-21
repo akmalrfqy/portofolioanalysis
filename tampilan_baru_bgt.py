@@ -624,6 +624,6 @@ elif menu == "📊 Analyze":
                 display_forecast_plot(scaled_data, forecast_results, forecast_periods, scaler)
 
                 # Output hasil forecast dalam bentuk angka
-                st.write("Forecasted Values:")
+                st.write("Forecasted Values (price):")
                 st.dataframe(forecast_results, use_container_width=True)
                                 
