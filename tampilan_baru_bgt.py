@@ -230,17 +230,22 @@ def run_model(data, selected_data, best_model_params):
     scaled_data = scaler.fit_transform(selected_data)
 
     # Pembagian data menjadi pelatihan dan pengujian
-    training_size = int(len(scaled_data) * 0.8)
-    train_data = scaled_data[:training_size]
-    test_data = scaled_data[training_size:]
+    train_size = int(len(scaled_data) * 0.6)
+    val_size = int(len(scaled_data) * 0.2)
 
+    train_data = scaled_data[:train_size]
+    val_data = scaled_data[train_size:train_size + val_size]
+    test_data = scaled_data[train_size + val_size:]  # Sisanya untuk test
+    
     # Mempersiapkan data dengan window size (timesteps)
     time_step = 6
     x_train, y_train = create_dataset(train_data, time_step)
+    x_val, y_val = create_dataset(val_data, time_step)
     x_test, y_test = create_dataset(test_data, time_step)
 
     # Reshape data agar sesuai dengan input GRU
     x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+    x_val = x_val.reshape(x_val.shape [0], x_val.shape[1], 1)
     x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 
     # Ambil parameter terbaik
@@ -254,7 +259,7 @@ def run_model(data, selected_data, best_model_params):
     best_model = build_model(hidden_layers, neurons, learning_rate, time_step)
 
     # Latih model dengan data pelatihan
-    best_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_test, y_test), shuffle=False, verbose=0)
+    best_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), shuffle=False, verbose=0)
 
     # Prediksi pada data pengujian
     y_test_pred = best_model.predict(x_test).flatten()
