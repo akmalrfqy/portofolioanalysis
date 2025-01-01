@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import GRU, Dense
+from keras.layers import Dropout
 from keras.optimizers import Adam
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_percentage_error
@@ -197,11 +198,13 @@ def selectbox_with_default(text, values, default=DEFAULT, sidebar=False):
     return func(text, [default] + list(values))
 
 # Fungsi untuk Membangun Model
-def build_model(hidden_layers, neurons, learning_rate, time_step):
+def build_model(hidden_layers, neurons, learning_rate, time_step, dropout_rate=0.2):
     model = Sequential()
     model.add(GRU(units=neurons, return_sequences=(hidden_layers > 1), input_shape=(time_step, 1)))
+    model.add(Dropout(dropout_rate)) 
     for _ in range(hidden_layers - 1):
         model.add(GRU(units=neurons, return_sequences=False))
+        model.add(Dropout(dropout_rate))
     model.add(Dense(1))  # Output layer untuk regresi
     model.compile(optimizer=Adam(learning_rate=learning_rate), loss='mean_squared_error')
     return model
@@ -254,9 +257,10 @@ def run_model(data, selected_data, best_model_params):
     hidden_layers = int(best_model_params['Hidden Layers'])
     epochs = int(best_model_params['Epochs'])
     learning_rate = float(best_model_params['Learning Rate'])
-
+    dropout_rate = float(best_model_params['Dropout'])
+    
     # Bangun model dengan parameter terbaik
-    best_model = build_model(hidden_layers, neurons, learning_rate, time_step)
+    best_model = build_model(hidden_layers, neurons, learning_rate, time_step, dropout_rate)
 
     # Latih model dengan data pelatihan
     best_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), shuffle=False, verbose=0)
@@ -606,7 +610,8 @@ elif menu == "📊 Analyze":
                     'Neurons': 100,
                     'Hidden Layers': 1,
                     'Epochs': 300,
-                    'Learning Rate': 0.001
+                    'Learning Rate': 0.001,
+                    'Dropout': 0.2
                 }
 
                 # Jalankan model dan tampilkan hasil
