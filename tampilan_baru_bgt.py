@@ -358,7 +358,7 @@ if menu == "🏠 Home":
 
         Pengguna dapat mengeksplorasi berbagai fitur yang tersedia, termasuk pengambilan data saham secara langsung melalui input form yang terintegrasi dengan Yahoo Finance, pengaturan periode waktu data, serta visualisasi hasil analisis yang mudah dipahami. Selain itu, pengguna juga dapat menggunakan data pilihan mereka sendiri, menjadikan dashboard ini fleksibel dan dapat disesuaikan dengan kebutuhan masing-masing.
 
-        Untuk memulai, silakan pilih menu Analyze untuk memasukkan data saham, lanjutkan ke menu Optimization untuk mendapatkan portofolio optimal, dan gunakan menu Forecasting untuk melihat peramalan harga saham. Dengan tampilan yang interaktif dan informatif, dashboard ini diharapkan dapat menjadi alat bantu yang efektif dalam pengambilan keputusan investasi yang lebih akurat dan berbasis data. 
+        Untuk memulai, silakan pilih menu Analyze untuk memasukkan data saham, klik tombol "Analyze" untuk mendapatkan portofolio optimal, setelah hasil optimasi keluar beralih ke fitut Forecasting dan klik tombol "Tampilkan Data" untuk melihat peramalan harga saham. Dengan tampilan yang interaktif dan informatif, dashboard ini diharapkan dapat menjadi alat bantu yang efektif dalam pengambilan keputusan investasi yang lebih akurat dan berbasis data. 
                 
         👉 Navigasikan melalui **menu di sebelah kiri** untuk memulai.
         """
@@ -567,7 +567,7 @@ elif menu == "📊 Analyze":
     # Form kedua untuk memilih ticker untuk analisis lebih lanjut
     if "prices" in st.session_state:
         with st.form("input_form_2"):
-            st.subheader("Pilih Ticker untuk Analisis Lanjutan")
+            st.subheader("Pilih Ticker untuk Analisis Peramalan")
 
             # Membaca data dari file CSV
             data = pd.read_csv('stock_data.csv', parse_dates=['Date'], index_col='Date')
