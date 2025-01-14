@@ -13,6 +13,44 @@ import scipy.optimize as sco
 import matplotlib.pyplot as plt
 import random
 
+def plot_total_returns(returns):
+    """
+    Function to plot total returns per stock as a horizontal bar chart in Streamlit.
+
+    Parameters:
+    returns (DataFrame): DataFrame containing monthly returns of stocks.
+    """
+    # Calculate total returns for each stock by summing monthly returns per emiten
+    total_returns = returns.sum(axis=0)
+
+    # Create DataFrame for plotting
+    total_returns_df = total_returns.reset_index()
+    total_returns_df.columns = ['Emiten', 'Total Return (%)']
+
+    # Sort data for plotting
+    sorted_total_returns_df = total_returns_df.sort_values(by='Total Return (%)', ascending=True)
+
+    # Plot total returns
+    fig, ax = plt.subplots(figsize=(12, 8))
+    bars = sorted_total_returns_df.set_index('Emiten')['Total Return (%)']
+    bars.plot(kind='barh', alpha=0.75, edgecolor='black', ax=ax)
+
+    # Add titles and labels
+    ax.set_title('Total Returns per Stock (Summed Monthly Returns)', fontsize=16)
+    ax.set_xlabel('Total Return (%)', fontsize=14)
+    ax.set_ylabel('Stocks', fontsize=14)
+    ax.grid(axis='x', linestyle='--', alpha=0.6)
+
+    # Add data labels to each bar
+    for i, value in enumerate(bars):
+        ax.text(value, i, f'{value:.2f}%', va='center', ha='left', fontsize=10, color='black')
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Display the plot in Streamlit
+    st.pyplot(fig)
+
 # Fungsi untuk menghitung pengembalian yang diharapkan
 def geometric_mean(series):
     return (np.prod(1 + series / 100) ** (1 / len(series)) - 1) * 100
@@ -451,7 +489,7 @@ elif menu == "📊 Analyze":
 
                 # Display results
                 st.write("### 📊 Returns (%)")
-                st.dataframe(returns, use_container_width=True)
+                plot_total_returns(returns)
 
                 # Load the BI rate data
                 bi_rate_path = 'BI-7Day-RR (3).xlsx'
@@ -525,10 +563,6 @@ elif menu == "📊 Analyze":
                 optimization_results_df, max_sharpe_weights, cov_matrix, corr_matrix, max_sharpe_weights_df = portfolio_optimization(
                     returns, filtered_stocks, filtered_expected_returns, monthly_risk_free_rate
                 )
-
-                # Display covariance matrix
-                st.subheader("Matriks Kovarian")
-                st.dataframe(cov_matrix, use_container_width=True)
 
                 # Display correlation matrix
                 st.subheader("Matriks Korelasi")
