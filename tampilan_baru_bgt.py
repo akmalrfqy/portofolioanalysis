@@ -642,7 +642,7 @@ elif menu == "📊 Analyze":
                 best_model_params = {
                     'Batch Size': 64,
                     'Neurons': 100,
-                    'Hidden Layers': 2,
+                    'Hidden Layers': 1,
                     'Epochs': 300,
                     'Learning Rate': 0.001,
                     'Dropout': 0.2
