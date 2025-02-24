@@ -9,9 +9,12 @@ from keras.layers import Dropout
 from keras.optimizers import Adam
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.metrics import mean_squared_error
 import scipy.optimize as sco
 import matplotlib.pyplot as plt
+import plotly.express as px
 import random
+import datetime
 
 def plot_total_returns(returns):
     """
@@ -138,6 +141,16 @@ def portfolio_optimization(returns, filtered_stocks, filtered_expected_returns, 
     max_sharpe_index = optimization_results_df['Sharpe Ratio'].idxmax()
     max_sharpe_weights = optimization_results_df.loc[max_sharpe_index]
 
+    # Buat DataFrame hanya berisi Expected Return, Risk, dan Sharpe Ratio
+    max_sharpe_summary_df = pd.DataFrame({
+        'Metric': ['Portfolio Risk (%)', 'Expected Return (%)', 'Sharpe Ratio'],
+        'Value': [
+            round(max_sharpe_weights['Portfolio Risk (Std Dev, %)'], 2),
+            round(max_sharpe_index, 2),  # max_sharpe_index adalah Target Return
+            round(max_sharpe_weights['Sharpe Ratio'], 2)
+        ]
+    })
+
     # Membuat DataFrame untuk bobot optimal dengan Sharpe Ratio tertinggi
     max_sharpe_weights_df = pd.DataFrame({
         'Emiten': filtered_stocks,
@@ -147,7 +160,24 @@ def portfolio_optimization(returns, filtered_stocks, filtered_expected_returns, 
     # Filter hanya bobot yang lebih besar dari 0
     max_sharpe_weights_df = max_sharpe_weights_df[max_sharpe_weights_df['Optimal Weight (%)'] > 0]
     
-    return optimization_results_df, max_sharpe_weights, cov_matrix, corr_matrix, max_sharpe_weights_df
+    return optimization_results_df, max_sharpe_summary_df, max_sharpe_weights, cov_matrix, corr_matrix, max_sharpe_weights_df
+
+def plot_pie_chart(dataframe):
+    fig = px.pie(dataframe, 
+                 names='Emiten', 
+                 values='Optimal Weight (%)', 
+                 hole=0.3)  # hole=0.3 membuatnya menjadi donut chart
+    # Memastikan judul ada di tengah
+    fig.update_layout(
+        title={
+            'text': "Distribusi Bobot Optimal Emiten Berdasarkan Sharpe Ratio Tertinggi",
+            'x': 0.5,  # Posisi X (0 = kiri, 0.5 = tengah, 1 = kanan)
+            'xanchor': 'center',  # Anchor di tengah
+            'yanchor': 'top'  # Tetap di bagian atas chart
+        }
+    )
+
+    return fig
 
 # Fungsi untuk menampilkan grafik pengembalian tahunan
 def plot_annual_returns(filtered_returns, max_sharpe_weights_df):
@@ -190,13 +220,6 @@ def plot_annual_returns(filtered_returns, max_sharpe_weights_df):
 def download_stock_data(optimal_tickers, prices):
     """
     Mengunduh data saham harian berdasarkan daftar ticker dan periode yang ditentukan.
-    
-    Args:
-    - optimal_tickers (list): Daftar ticker yang akan diunduh.
-    - prices (pd.DataFrame): Data harga saham untuk menentukan periode.
-    
-    Returns:
-    - stock_data_df (pd.DataFrame): Data saham yang telah digabungkan.
     """
     # Ambil periode start dan end dari data awal
     start_date = prices.index.min()  # Tanggal awal dari data bulanan
@@ -239,7 +262,7 @@ def selectbox_with_default(text, values, default=DEFAULT, sidebar=False):
 def build_model(hidden_layers, neurons, learning_rate, time_step, dropout_rate=0.2):
     model = Sequential()
     model.add(GRU(units=neurons, return_sequences=(hidden_layers > 1), input_shape=(time_step, 1)))
-    model.add(Dropout(dropout_rate)) 
+    model.add(Dropout(dropout_rate))
     for _ in range(hidden_layers - 1):
         model.add(GRU(units=neurons, return_sequences=False))
         model.add(Dropout(dropout_rate))
@@ -271,13 +294,13 @@ def run_model(data, selected_data, best_model_params):
     scaled_data = scaler.fit_transform(selected_data)
 
     # Pembagian data menjadi pelatihan dan pengujian
-    train_size = int(len(scaled_data) * 0.6)
-    val_size = int(len(scaled_data) * 0.2)
+    training_size = int(len(scaled_data) * 0.6)
+    validation_size = int(len(scaled_data) * 0.2)
 
-    train_data = scaled_data[:train_size]
-    val_data = scaled_data[train_size:train_size + val_size]
-    test_data = scaled_data[train_size + val_size:]  # Sisanya untuk test
-    
+    train_data = scaled_data[:training_size]
+    val_data = scaled_data[training_size:training_size + validation_size] 
+    test_data = scaled_data[training_size:]
+
     # Mempersiapkan data dengan window size (timesteps)
     time_step = 6
     x_train, y_train = create_dataset(train_data, time_step)
@@ -286,7 +309,7 @@ def run_model(data, selected_data, best_model_params):
 
     # Reshape data agar sesuai dengan input GRU
     x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-    x_val = x_val.reshape(x_val.shape [0], x_val.shape[1], 1)
+    x_val = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
     x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 
     # Ambil parameter terbaik
@@ -295,13 +318,13 @@ def run_model(data, selected_data, best_model_params):
     hidden_layers = int(best_model_params['Hidden Layers'])
     epochs = int(best_model_params['Epochs'])
     learning_rate = float(best_model_params['Learning Rate'])
-    dropout_rate = float(best_model_params['Dropout'])
-    
+    dropout_rate = float(best_model_params['Dropout Rate'])
+
     # Bangun model dengan parameter terbaik
     best_model = build_model(hidden_layers, neurons, learning_rate, time_step, dropout_rate)
 
     # Latih model dengan data pelatihan
-    best_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), shuffle=False, verbose=0)
+    history = best_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), shuffle=False, verbose=0)
 
     # Prediksi pada data pengujian
     y_test_pred = best_model.predict(x_test).flatten()
@@ -309,37 +332,45 @@ def run_model(data, selected_data, best_model_params):
     # Denormalisasi data aktual dan prediksi
     y_test_actual = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
     y_test_pred_denormalized = scaler.inverse_transform(y_test_pred.reshape(-1, 1)).flatten()
+    y_actual_denormalized = scaler.inverse_transform(scaled_data).flatten()
 
     # Hitung MAPE untuk data pengujian setelah denormalisasi
     test_mape_denormalized = mean_absolute_percentage_error(y_test_actual, y_test_pred_denormalized)
+    
+   # Menyimpan dan menampilkan loss train dan validation
+    train_loss = history.history['loss']
+    val_loss = history.history['val_loss']
 
-    # Plot hasil prediksi vs data sebenarnya setelah denormalisasi
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(y_test_actual, label='Actual', color='blue')
-    ax.plot(y_test_pred_denormalized, label='Predicted', color='red')
-    ax.set_title('Actual vs Predicted - Testing Part (Denormalized)')
-    ax.set_xlabel('Time Steps')
-    ax.set_ylabel('CPO Production')
-    ax.legend()
+    validation_mse = history.history['val_loss'][-1]
+    training_mse = history.history['loss'][-1]
+
+    print(f"Training MSE :{training_mse:.5f}")
+    print(f"Validation MSE : {validation_mse:.5f}")
+
+    # Plot training dan validation loss
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_loss, label='Training Loss', color='blue', linewidth=2)
+    plt.plot(val_loss, label='Validation Loss', color='orange', linewidth=2)
+    plt.title('Training and Validation Loss', fontsize=14)
+    plt.xlabel('Epochs', fontsize=12)
+    plt.ylabel('Loss', fontsize=12)
+    plt.legend(fontsize=10)
+
+    # Tambahkan nilai MSE ke dalam grafik, lebih ke kanan dan sedikit lebih rendah
+    plt.gca().text(0.835, 0.8, f"Train MSE: {training_mse:.5f}\nVal MSE: {validation_mse:.5f}", fontsize=10, color='black', transform=plt.gca().transAxes, bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
+
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
 
     # Tampilkan plot di Streamlit
-    st.pyplot(fig)  # Menampilkan plot
+    st.pyplot(plt)  # Menampilkan plot
 
-    return test_mape_denormalized, best_model, scaler, scaled_data
+    return y_test_pred_denormalized, y_actual_denormalized, test_mape_denormalized, best_model, scaler, scaled_data
 
 def forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_periods=60):
     """
     Melakukan forecasting berdasarkan model yang sudah dilatih.
-
-    Parameters:
-        - best_model: Model GRU/LSTM yang sudah dilatih.
-        - scaler: Scaler yang digunakan untuk normalisasi.
-        - scaled_data: Data yang sudah dinormalisasi.
-        - time_step: Window size.
-        - forecast_periods: Jumlah periode yang akan diprediksi.
-
-    Returns:
-        - forecast_results_denormalized: Hasil forecast yang sudah di-denormalisasi.
     """
     last_sequence = scaled_data[-time_step:].flatten()
     forecast_results = []
@@ -353,31 +384,53 @@ def forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_p
     return forecast_results_denormalized
 
 
-def display_forecast_plot(scaled_data, forecast_results_denormalized, forecast_periods, scaler):
+def display_forecast_plot(scaler, scaled_data, y_actual_denormalized, y_test_pred_denormalized, forecast_results_denormalized, forecast_periods, test_mape_denormalized):
     """
-    Menampilkan plot hasil forecast.
+    Menampilkan plot hasil prediksi dan forecast.
 
-    Parameters:
-        - scaled_data: Data input yang sudah dinormalisasi.
-        - forecast_results_denormalized: Hasil forecast (denormalisasi).
-        - forecast_periods: Jumlah periode forecasting.
-        - scaler: Scaler untuk denormalisasi data.
+    Parameter:
+    - y_actual_denormalized: Data aktual yang sudah di-denormalisasi.
+    - y_pred_denormalized: Hasil prediksi model pada data testing (denormalisasi).
+    - forecast_results_denormalized: Hasil forecast untuk periode ke depan (denormalisasi).
+    - forecast_periods: Jumlah periode forecast.
+    - test_mape_denormalized: Nilai MAPE (Mean Absolute Percentage Error) setelah denormalisasi.
     """
-    y_actual_denormalized = scaler.inverse_transform(scaled_data).flatten()
+    
+    plt.figure(figsize=(14, 7))
+    # Plot data aktual (garis biru)
+    plt.plot(np.arange(len(y_actual_denormalized)), y_actual_denormalized, 
+             label='Actual', color='blue', linewidth=1.5)
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(range(len(y_actual_denormalized)), y_actual_denormalized, label='Actual', color='blue')
-    plt.plot(range(len(y_actual_denormalized), len(y_actual_denormalized) + forecast_periods),
-             forecast_results_denormalized, label='Forecasted', color='red')
-    plt.title('Actual vs Forecasted Data')
-    plt.xlabel('Time Steps')
-    plt.ylabel('Value')
-    plt.legend()
+    # Plot hasil prediksi pada data uji (garis oranye)
+    start_pred = len(y_actual_denormalized) - len(y_test_pred_denormalized)
+    plt.plot(np.arange(start_pred, len(y_actual_denormalized)), y_test_pred_denormalized, 
+             label='Predicted (Training/Testing)', color='orange', linewidth=1.5)
+
+    # Plot hasil forecast untuk periode ke depan (garis merah)
+    plt.plot(np.arange(len(y_actual_denormalized), len(y_actual_denormalized) + forecast_periods), 
+             forecast_results_denormalized, label='Forecasted (Next Periods)', color='red', linewidth=1.5)
+
+    # Tambahkan garis vertikal untuk menandai awal testing dan awal forecasting
+    plt.axvline(x=start_pred, color='purple', linestyle='--', label='Start of Model Testing', linewidth=1.2)
+    plt.axvline(x=len(y_actual_denormalized), color='green', linestyle='--', label='Start of Forecasting', linewidth=1.2)
+
+    # Tambahkan nilai MAPE di dalam grafik
+    plt.text(0.02, 0.75, f"Test MAPE: {test_mape_denormalized*100:.2f}%", 
+             transform=plt.gca().transAxes, fontsize=12, verticalalignment='top', horizontalalignment='left', 
+             bbox=dict(boxstyle="round,pad=0.5", facecolor="#ffffff", edgecolor="black", alpha=0.9))
+
+    # Pengaturan visualisasi
+    plt.title('Actual vs Predicted vs Forecasted Stock Price', fontsize=16, fontweight='bold')
+    plt.xlabel('Time Steps', fontsize=12)
+    plt.ylabel('Price', fontsize=12)
+    plt.legend(fontsize=10, loc='upper left')
+    plt.grid(True, linestyle='--', linewidth=0.7, alpha=0.6)
+    plt.tight_layout()
+
+    # Tampilkan plot di Streamlit
     st.pyplot(plt)
 
 
-# Misalkan optimal_tickers dan prices sudah tersedia, kamu bisa panggil fungsi ini
-# stock_data_df = download_stock_data(optimal_tickers, prices)
 
 # Sidebar Navigation
 st.sidebar.title("MENU")
@@ -396,7 +449,7 @@ if menu == "🏠 Home":
 
         Pengguna dapat mengeksplorasi berbagai fitur yang tersedia, termasuk pengambilan data saham secara langsung melalui input form yang terintegrasi dengan Yahoo Finance, pengaturan periode waktu data, serta visualisasi hasil analisis yang mudah dipahami. Selain itu, pengguna juga dapat menggunakan data pilihan mereka sendiri, menjadikan dashboard ini fleksibel dan dapat disesuaikan dengan kebutuhan masing-masing.
 
-        Untuk memulai, silakan pilih menu Analyze untuk memasukkan data saham, klik tombol "Analyze" untuk mendapatkan portofolio optimal, setelah hasil optimasi keluar beralih ke fitut Forecasting dan klik tombol "Tampilkan Data" untuk melihat peramalan harga saham. Dengan tampilan yang interaktif dan informatif, dashboard ini diharapkan dapat menjadi alat bantu yang efektif dalam pengambilan keputusan investasi yang lebih akurat dan berbasis data. 
+        Untuk memulai, silakan pilih menu Analyze untuk memasukkan data saham, lanjutkan ke menu Optimization untuk mendapatkan portofolio optimal, dan gunakan menu Forecasting untuk melihat peramalan harga saham. Dengan tampilan yang interaktif dan informatif, dashboard ini diharapkan dapat menjadi alat bantu yang efektif dalam pengambilan keputusan investasi yang lebih akurat dan berbasis data. 
                 
         👉 Navigasikan melalui **menu di sebelah kiri** untuk memulai.
         """
@@ -449,14 +502,14 @@ elif menu == "📊 Analyze":
                 "Start Date",
                 value=pd.Timestamp("2021-10-01"),  # Default value
                 min_value=pd.Timestamp("2000-01-01"),
-                max_value=pd.Timestamp("2024-12-31"),
+                max_value=datetime.date.today(),
             )
         with col2:
             end_date = st.date_input(
                 "End Date",
                 value=pd.Timestamp("2024-10-31"),  # Default value
                 min_value=pd.Timestamp("2000-01-01"),
-                max_value=pd.Timestamp("2024-12-31"),
+                max_value=datetime.date.today(),
             )
 
         # Tombol Submit untuk form pertama
@@ -552,17 +605,27 @@ elif menu == "📊 Analyze":
                 st.subheader("Statistik Deskriptif untuk Return yang Difilter")
                 st.dataframe(descriptive_stats_returns, use_container_width=True)
 
-                # Menampilkan grafik pengembalian
-                total_returns = filtered_returns.sum()
+                # Menjumlahkan total return setiap emiten
+                cumulative_returns = pd.DataFrame({
+                    'Emiten': filtered_returns.columns,  # Nama saham sebagai kolom
+                    'Total Return': filtered_returns.sum().values  # Jumlah return total sebagai nilai
+                })
 
-                # Plot total returns
-                st.subheader("Total Return For Non-Eliminated Stocks")
-                st.bar_chart(total_returns)
+                # Pastikan indexnya benar (tanpa nomor otomatis)
+                cumulative_returns.reset_index(drop=True, inplace=True)
+
+                # Tambahkan tanda persen (%) tanpa mengubah nilai
+                cumulative_returns["Total Return"] = cumulative_returns["Total Return"].round(2)
+
+                # Pastikan hanya ada dua kolom: 'Emiten' dan 'Total Return'
+                st.subheader("Total Return For Non-Eliminated Stocks (%)")
+                # Plot dengan memastikan 'Emiten' sebagai index
+                st.bar_chart(cumulative_returns.set_index('Emiten'))
 
                 # Portfolio Optimization
-                optimization_results_df, max_sharpe_weights, cov_matrix, corr_matrix, max_sharpe_weights_df = portfolio_optimization(
+                optimization_results_df, max_sharpe_summary_df, max_sharpe_weights, cov_matrix, corr_matrix, max_sharpe_weights_df = portfolio_optimization(
                     returns, filtered_stocks, filtered_expected_returns, monthly_risk_free_rate
-                )
+                )   
 
                 # Display correlation matrix
                 st.subheader("Matriks Korelasi")
@@ -574,11 +637,10 @@ elif menu == "📊 Analyze":
 
                 # Display Choosen Portofolio
                 st.subheader("Portofolio Efisien Terpilih Berdasarkan Sharpe Ratio Tertinggi")
-                st.dataframe(max_sharpe_weights, use_container_width=True)
-                
-                # Display best Sharpe ratio weights
-                st.subheader("Bobot Optimal Berdasarkan Sharpe Ratio Tertinggi")
-                st.dataframe(max_sharpe_weights_df, use_container_width=True)
+                st.dataframe(max_sharpe_summary_df, use_container_width=True)
+            
+                #Display Pie-Chart bobot optimal
+                st.plotly_chart(plot_pie_chart(max_sharpe_weights_df), use_container_width=True)
 
                 # Plot annual returns using the highest Sharpe ratio weights
                 st.subheader("Pengembalian Tahunan Portofolio")
@@ -587,8 +649,6 @@ elif menu == "📊 Analyze":
                 # Daftar ticker dari kolom 'Emiten' di dataframe max_sharpe_weights_df
                 optimal_tickers = max_sharpe_weights_df['Emiten'].tolist()
 
-                # Asumsikan 'prices' adalah dataframe yang berisi data harga saham bulanan yang sudah ada
-                # Kamu bisa menyesuaikan dengan data yang kamu punya, misalnya harga saham bulanan
                 # Download data saham berdasarkan optimal_tickers
                 stock_data_df = download_stock_data(optimal_tickers, prices)
 
@@ -601,15 +661,10 @@ elif menu == "📊 Analyze":
     # Form kedua untuk memilih ticker untuk analisis lebih lanjut
     if "prices" in st.session_state:
         with st.form("input_form_2"):
-            st.subheader("Pilih Ticker untuk Analisis Peramalan")
+            st.subheader("Pilih Ticker untuk Analisis Lanjutan")
 
             # Membaca data dari file CSV
             data = pd.read_csv('stock_data.csv', parse_dates=['Date'], index_col='Date')
-
-
-            # Menghapus kolom 'Date' dari DataFrame (jika ada)
-            # if 'Date' in data.columns:
-            #     data = data.drop(columns=['Date'])
 
             # Ambil nama kolom selain 'Date' sebagai daftar ticker
             tickers = data.columns.tolist()
@@ -642,32 +697,32 @@ elif menu == "📊 Analyze":
                 best_model_params = {
                     'Batch Size': 64,
                     'Neurons': 100,
-                    'Hidden Layers': 1,
+                    'Hidden Layers': 2,
                     'Epochs': 300,
                     'Learning Rate': 0.001,
-                    'Dropout': 0.2
+                    'Dropout Rate': 0.2
                 }
 
                 # Jalankan model dan tampilkan hasil
                 # Jalankan model
-                test_mape, best_model, scaler, scaled_data = run_model(data, selected_ticker, best_model_params)
+                y_test_pred_denormalized, y_actual_denormalized, test_mape_denormalized, best_model, scaler, scaled_data = run_model(data, selected_ticker, best_model_params)
 
                 # Tampilkan hasil MAPE
-                st.write(f"Test MAPE (Denormalized): {test_mape*100:.2f}%")
+                # st.write(f"Test MAPE (Denormalized): {test_mape*100:.2f}%")
 
                 # Forecast periode ke depan
                 forecast_periods = 60  # Atur jumlah periode yang akan diprediksi
-                st.write(f"Forecasting untuk {forecast_periods} hari ke depan...")
+                st.write(f"Forecasting untuk {forecast_periods} periode ke depan...")
 
                 # Forecasting
                 time_step = 6  # Window size yang digunakan
-                forecast_results = forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_periods)
+                forecast_results_denormalized = forecast_next_periods(best_model, scaler, scaled_data, time_step, forecast_periods)
 
                 # Tampilkan plot hasil forecast
                 st.subheader("Forecasted Data")
-                display_forecast_plot(scaled_data, forecast_results, forecast_periods, scaler)
+                display_forecast_plot(scaler, scaled_data, y_actual_denormalized, y_test_pred_denormalized, forecast_results_denormalized, forecast_periods, test_mape_denormalized)
 
                 # Output hasil forecast dalam bentuk angka
-                st.write("Forecasted Values (price):")
-                st.dataframe(forecast_results, use_container_width=True)
+                st.write("Forecasted Values:")
+                st.dataframe(forecast_results_denormalized, use_container_width=True)
                                 
