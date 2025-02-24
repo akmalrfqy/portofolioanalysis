@@ -7,3 +7,5 @@ openpyxl
 matplotlib
 tensorflow
 scikit-learn
+plotly
+datetime
