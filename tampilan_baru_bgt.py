@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error
 import scipy.optimize as sco
 import matplotlib.pyplot as plt
 import plotly.express as px
+import seaborn as sns
 import random
 import datetime
 
@@ -627,9 +628,11 @@ elif menu == "📊 Analyze":
                     returns, filtered_stocks, filtered_expected_returns, monthly_risk_free_rate
                 )   
 
-                # Display correlation matrix
-                st.subheader("Matriks Korelasi")
-                st.dataframe(corr_matrix, use_container_width=True)
+                # Buat figure untuk heatmap Correlation Matrix
+                plt.figure(figsize=(10, 8))
+                sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+                plt.title("Correlation Matrix")
+                st.pyplot(plt)
 
                 # Display optimization results
                 st.subheader("Hasil Optimasi Portofolio")
