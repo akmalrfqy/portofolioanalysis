@@ -468,10 +468,10 @@ elif menu == "📚 Tutorial":
         4. Lihat **ringkasan data** dan analisis lebih lanjut.
         5. Pilih **kode emiten** untuk mendapatkan hasil peramalan harga saham.
 
-        untuk penjelasan lengkap cara penggunaan dan output analisis silahkan tonton video berikut!
         """
     )
-    st.image("https://via.placeholder.com/800x400.png?text=Panduan+Visual", use_container_width=True)
+    ## untuk penjelasan lengkap cara penggunaan dan output analisis silahkan tonton video berikut!
+    ## st.image("https://via.placeholder.com/800x400.png?text=Panduan+Visual", use_container_width=True)
 
 # **Analyze Page**
 elif menu == "📊 Analyze":
