@@ -664,7 +664,7 @@ elif menu == "📊 Analyze":
     # Form kedua untuk memilih ticker untuk analisis lebih lanjut
     if "prices" in st.session_state:
         with st.form("input_form_2"):
-            st.subheader("Pilih Ticker untuk Analisis Lanjutan")
+            st.subheader("Pilih Ticker Untuk Meramalkan Harga Saham")
 
             # Membaca data dari file CSV
             data = pd.read_csv('stock_data.csv', parse_dates=['Date'], index_col='Date')
@@ -675,7 +675,7 @@ elif menu == "📊 Analyze":
             # Pilih ticker untuk analisis
             selected_ticker = st.selectbox("Pilih ticker untuk analisis:", tickers)
 
-            submit_button_2 = st.form_submit_button(label="Tampilkan Data")
+            submit_button_2 = st.form_submit_button(label="Forecast")
 
             if submit_button_2:
                 # Menampilkan data untuk ticker yang dipilih
