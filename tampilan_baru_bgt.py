@@ -300,7 +300,7 @@ def run_model(data, selected_data, best_model_params):
 
     train_data = scaled_data[:training_size]
     val_data = scaled_data[training_size:training_size + validation_size] 
-    test_data = scaled_data[training_size:]
+    test_data = scaled_data[training_size + validation_size:]
 
     # Mempersiapkan data dengan window size (timesteps)
     time_step = 6
